@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionLab AI | Praktikum 04 - Filtering, Konvolusi & Deteksi Tepi</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Highlight.js for Code Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <!-- MathJax for Math Formulas with inline support -->
+    <script>
+      window.MathJax = {
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']]
+        },
+        svg: {
+          fontCache: 'global'
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="light-theme">
+    <!-- Header Navbar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-microchip"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>VisionLab <span>AI</span></h1>
+                    <p class="subtitle">Praktikum 04: Pengolahan Citra Digital, Konvolusi & Deteksi Tepi</p>
+                </div>
+            </div>
+
+            <!-- Global Image Selector / Upload Bar -->
+            <div class="global-image-controls">
+                <div class="dataset-dropdown-wrap">
+                    <label for="globalImageSelect"><i class="fa-solid fa-images"></i> Sample Citra:</label>
+                    <select id="globalImageSelect" class="styled-select">
+                        <!-- Loaded dynamically -->
+                    </select>
+                </div>
+                <label class="btn-upload" for="globalImageUpload">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Upload Citra
+                    <input type="file" id="globalImageUpload" accept="image/*" style="display: none;">
+                </label>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs">
+            <button class="tab-btn active" data-tab="tab-filtering">
+                <i class="fa-solid fa-sliders"></i> 1. Image Filtering
+            </button>
+            <button class="tab-btn" data-tab="tab-convolution">
+                <i class="fa-solid fa-border-all"></i> 2. 2D Convolution & Probe
+            </button>
+            <button class="tab-btn" data-tab="tab-edges">
+                <i class="fa-solid fa-vector-square"></i> 3. Edge Detection
+            </button>
+            <button class="tab-btn" data-tab="tab-canny">
+                <i class="fa-solid fa-layer-group"></i> 4. Canny 5-Stage Pipeline
+            </button>
+            <button class="tab-btn" data-tab="tab-casestudies">
+                <i class="fa-solid fa-car"></i> 5. Kasus Computer Vision
+            </button>
+            <button class="tab-btn" data-tab="tab-livecam">
+                <i class="fa-solid fa-video"></i> 6. Live Webcam
+            </button>
+            <button class="tab-btn" data-tab="tab-quiz">
+                <i class="fa-solid fa-graduation-cap"></i> 7. Kuis & Teori
+            </button>
+        </nav>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+        <!-- Toast Notification Container -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 1: IMAGE FILTERING LAB -->
+        <!-- ========================================================================= -->
+        <section id="tab-filtering" class="tab-pane active">
+            <div class="pane-header">
+                <div>
+                    <h2><i class="fa-solid fa-sliders text-cyan"></i> Modul 1: Image Filtering (Linear & Non-Linear)</h2>
+                    <p>Eksplorasi teknik penghalusan citra (smoothing), pengurangan derau (noise reduction), dan penajaman citra (sharpening).</p>
+                </div>
+                <div class="badge-pill"><i class="fa-solid fa-shield-halved"></i> Spatial Domain Filtering</div>
+            </div>
+
+            <div class="grid-2col">
+                <!-- Control Panel -->
+                <div class="card control-card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-gear"></i> Parameter & Noise Sandbox</h3>
+                    </div>
+
+                    <!-- Filter Selection -->
+                    <div class="form-group">
+                        <label class="form-label">Pilih Algoritma Filter:</label>
+                        <div class="filter-pills" id="filterTypePills">
+                            <button class="pill active" data-filter="gaussian">
+                                <i class="fa-solid fa-wave-square"></i> Gaussian Blur
+                            </button>
+                            <button class="pill" data-filter="mean">
+                                <i class="fa-solid fa-square"></i> Mean (Box)
+                            </button>
+                            <button class="pill" data-filter="median">
+                                <i class="fa-solid fa-filter"></i> Median Filter
+                            </button>
+                            <button class="pill" data-filter="bilateral">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Bilateral
+                            </button>
+                            <button class="pill" data-filter="sharpen">
+                                <i class="fa-solid fa-bolt"></i> Sharpening
+                            </button>
+                            <button class="pill" data-filter="unsharp_mask">
+                                <i class="fa-solid fa-mask"></i> Unsharp Mask
+                            </button>
+                            <button class="pill" data-filter="min_filter">
+                                <i class="fa-solid fa-compress"></i> Min (Erosion)
+                            </button>
+                            <button class="pill" data-filter="max_filter">
+                                <i class="fa-solid fa-expand"></i> Max (Dilation)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Noise Injection Sandbox -->
+                    <div class="noise-box">
+                        <div class="noise-box-header">
+                            <h4><i class="fa-solid fa-burst text-orange"></i> Uji Ketahanan Derau (Noise Injection)</h4>
+                            <span class="badge-tag">Sandbox</span>
+                        </div>
+                        <div class="noise-controls">
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="noiseType" value="none" checked> Tanpa Derau
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="noiseType" value="salt_pepper"> Salt & Pepper
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="noiseType" value="gaussian"> Gaussian Noise
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="noiseType" value="speckle"> Speckle Noise
+                                </label>
+                            </div>
+                            <div class="slider-row" id="noiseIntensityRow" style="display: none;">
+                                <span>Intensitas Derau:</span>
+                                <input type="range" id="noiseIntensity" min="0.01" max="0.30" step="0.01" value="0.05">
+                                <span class="val-display" id="noiseIntensityVal">5%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Parameters -->
+                    <div class="dynamic-params-box">
+                        <!-- Kernel Size -->
+                        <div class="param-row" id="ksizeRow">
+                            <div class="param-label-row">
+                                <label for="filterKsize">Ukuran Kernel (K × K):</label>
+                                <span class="val-display" id="filterKsizeVal">5 × 5</span>
+                            </div>
+                            <input type="range" id="filterKsize" min="1" max="31" step="2" value="5">
+                            <small class="text-muted">Ukuran kernel harus bilangan ganjil (1, 3, 5, 7, ...)</small>
+                        </div>
+
+                        <!-- Gaussian Sigma -->
+                        <div class="param-row" id="sigmaRow">
+                            <div class="param-label-row">
+                                <label for="filterSigma">Standar Deviasi (&sigma;):</label>
+                                <span class="val-display" id="filterSigmaVal">1.5</span>
+                            </div>
+                            <input type="range" id="filterSigma" min="0.1" max="10.0" step="0.1" value="1.5">
+                            <small class="text-muted">Mengontrol seberapa lebar kurva distribusi lonceng Gaussian.</small>
+                        </div>
+
+                        <!-- Bilateral Sigma Color -->
+                        <div class="param-row" id="sigmaColorRow" style="display: none;">
+                            <div class="param-label-row">
+                                <label for="filterSigmaColor">Sigma Color (&sigma;<sub>color</sub>):</label>
+                                <span class="val-display" id="filterSigmaColorVal">75</span>
+                            </div>
+                            <input type="range" id="filterSigmaColor" min="10" max="250" step="5" value="75">
+                        </div>
+
+                        <!-- Bilateral Sigma Space -->
+                        <div class="param-row" id="sigmaSpaceRow" style="display: none;">
+                            <div class="param-label-row">
+                                <label for="filterSigmaSpace">Sigma Space (&sigma;<sub>space</sub>):</label>
+                                <span class="val-display" id="filterSigmaSpaceVal">75</span>
+                            </div>
+                            <input type="range" id="filterSigmaSpace" min="10" max="250" step="5" value="75">
+                        </div>
+                    </div>
+
+                    <!-- Metric Performance Card -->
+                    <div class="metrics-card">
+                        <h4><i class="fa-solid fa-chart-line"></i> Metrik Kualitas Citra (Image Quality Metrics)</h4>
+                        <div class="metrics-grid">
+                            <div class="metric-item">
+                                <span class="metric-title">PSNR</span>
+                                <span class="metric-val" id="metricPsnr">-- dB</span>
+                                <span class="metric-desc">Peak Signal-to-Noise Ratio</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-title">SSIM</span>
+                                <span class="metric-val" id="metricSsim">--</span>
+                                <span class="metric-desc">Structural Similarity (0-1)</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-title">MSE</span>
+                                <span class="metric-val" id="metricMse">--</span>
+                                <span class="metric-desc">Mean Squared Error</span>
+                            </div>
+                            <div class="metric-item">
+                                <span class="metric-title">Latency</span>
+                                <span class="metric-val" id="metricLatency">-- ms</span>
+                                <span class="metric-desc">Waktu Komputasi</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visual Output & Comparison Panel -->
+                <div class="card visual-card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-image"></i> Visualisasi & Pembanding Split-Screen</h3>
+                        <div class="view-toggle">
+                            <button class="view-btn active" id="btnViewSplit"><i class="fa-solid fa-arrows-left-right"></i> Split Slider</button>
+                            <button class="view-btn" id="btnViewSide"><i class="fa-solid fa-table-columns"></i> Side-by-Side</button>
+                        </div>
+                    </div>
+
+                    <!-- Split Slider Viewer -->
+                    <div class="split-viewer-wrapper" id="splitViewerWrap">
+                        <div class="split-viewer" id="splitViewer">
+                            <img id="splitImgProcessed" class="split-img-after" src="" alt="Processed">
+                            <div class="split-overlay" id="splitOverlay">
+                                <img id="splitImgOriginal" class="split-img-before" src="" alt="Original / Noisy">
+                            </div>
+                            <div class="split-handle" id="splitHandle">
+                                <div class="handle-bar"></div>
+                                <div class="handle-circle"><i class="fa-solid fa-left-right"></i></div>
+                            </div>
+                            <div class="split-label label-before">Original / Noisy</div>
+                            <div class="split-label label-after">Filtered Result</div>
+                        </div>
+                    </div>
+
+                    <!-- Side-by-Side Viewer -->
+                    <div class="side-viewer-wrapper" id="sideViewerWrap" style="display: none;">
+                        <div class="side-box">
+                            <h5>Input / Derau</h5>
+                            <img id="sideImgOriginal" src="" alt="Original">
+                        </div>
+                        <div class="side-box">
+                            <h5>Hasil Filter</h5>
+                            <img id="sideImgProcessed" src="" alt="Filtered">
+                        </div>
+                    </div>
+
+                    <!-- Histogram Comparison -->
+                    <div class="histogram-section">
+                        <h4><i class="fa-solid fa-chart-column"></i> Perbandingan Histogram Intensitas Grayscale (0 - 255)</h4>
+                        <div class="hist-canvas-wrap">
+                            <canvas id="histCanvas" width="560" height="120"></canvas>
+                        </div>
+                        <div class="hist-legend">
+                            <span class="legend-item"><span class="legend-dot dot-cyan"></span> Citra Masukan</span>
+                            <span class="legend-item"><span class="legend-dot dot-emerald"></span> Citra Hasil Filter</span>
+                        </div>
+                    </div>
+
+                    <!-- Code Snippet Python -->
+                    <div class="code-export-box">
+                        <div class="code-header">
+                            <span><i class="fa-brands fa-python text-yellow"></i> Python OpenCV Snippet</span>
+                            <button class="btn-copy" id="btnCopyFilterCode"><i class="fa-regular fa-copy"></i> Salin Kode</button>
+                        </div>
+                        <pre><code class="language-python" id="filterCodeSnippet"># Loading...</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 2: 2D CONVOLUTION STUDIO & PIXEL PROBE -->
+        <!-- ========================================================================= -->
+        <section id="tab-convolution" class="tab-pane">
+            <div class="pane-header">
+                <div>
+                    <h2><i class="fa-solid fa-border-all text-purple"></i> Modul 2: 2D Convolution Studio & Pixel Math Probe</h2>
+                    <p>Pahami secara intuitif bagaimana operasi konvolusi spasial $g(x,y) = f(x,y) * h(x,y) = \sum \sum f(x-i, y-j) h(i,j)$ bekerja per-pixel.</p>
+                </div>
+                <div class="badge-pill"><i class="fa-solid fa-calculator"></i> Matrix Arithmetic Engine</div>
+            </div>
+
+            <div class="grid-2col">
+                <!-- Kernel Matrix Builder -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-table-cells"></i> Konfigurasi Kernel Spasial</h3>
+                    </div>
+
+                    <!-- Preset Selector -->
+                    <div class="form-group">
+                        <label class="form-label">Preset Kernel Populer:</label>
+                        <div class="preset-pills" id="kernelPresetPills">
+                            <button class="pill active" data-preset="sharpen">Sharpen (3×3)</button>
+                            <button class="pill" data-preset="box_blur">Box Blur (3×3)</button>
+                            <button class="pill" data-preset="gaussian">Gaussian (3×3)</button>
+                            <button class="pill" data-preset="laplacian">Laplacian (3×3)</button>
+                            <button class="pill" data-preset="sobel_h">Sobel Horizontal (Gx)</button>
+                            <button class="pill" data-preset="sobel_v">Sobel Vertikal (Gy)</button>
+                            <button class="pill" data-preset="emboss">Emboss (3×3)</button>
+                            <button class="pill" data-preset="ridge">Ridge Detection</button>
+                            <button class="pill" data-preset="identity">Identity (Pass)</button>
+                        </div>
+                    </div>
+
+                    <!-- Kernel Dimension & Matrix Inputs -->
+                    <div class="matrix-builder-wrap">
+                        <div class="matrix-controls-bar">
+                            <label>Ukuran Grid Matrix:</label>
+                            <div class="grid-size-toggle">
+                                <button class="size-btn active" id="btnKernel3x3">3 × 3</button>
+                                <button class="size-btn" id="btnKernel5x5">5 × 5</button>
+                            </div>
+                        </div>
+
+                        <!-- 3x3 / 5x5 Input Grid Table -->
+                        <div class="kernel-matrix-grid" id="kernelMatrixGrid">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <div class="matrix-extras-row">
+                            <div class="extra-field">
+                                <label for="kernelDivisor">Pembagi (Divisor / Normalisasi):</label>
+                                <input type="number" id="kernelDivisor" value="1" step="any">
+                            </div>
+                            <div class="extra-field">
+                                <label for="kernelBias">Bias / Offset (+):</label>
+                                <input type="number" id="kernelBias" value="0" step="any">
+                            </div>
+                            <div class="extra-field">
+                                <label for="kernelBorderMode">Padding Border:</label>
+                                <select id="kernelBorderMode" class="styled-select-sm">
+                                    <option value="replicate">Replicate Border</option>
+                                    <option value="reflect">Reflect Border</option>
+                                    <option value="constant">Constant (Zero)</option>
+                                    <option value="wrap">Wrap</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="matrix-actions">
+                            <button class="btn-primary" id="btnApplyCustomConv">
+                                <i class="fa-solid fa-play"></i> Terapkan Konvolusi ke Citra
+                            </button>
+                            <button class="btn-secondary" id="btnNormalizeKernel">
+                                <i class="fa-solid fa-divide"></i> Auto-Normalisasi (Sum=1)
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mathematical Formula Box -->
+                    <div class="math-formula-box">
+                        <h4><i class="fa-solid fa-square-root-variable"></i> Formula Konvolusi 2D Diskrit</h4>
+                        <div class="formula-render">
+                            $$g(x,y) = \text{clip}\left( \frac{\sum_{i=-a}^{a} \sum_{j=-b}^{b} f(x+i, y+j) \cdot K(i,j)}{\text{Divisor}} + \text{Bias}, 0, 255 \right)$$
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visual Output & Interactive Pixel Probe -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-crosshairs text-cyan"></i> Interactive Pixel Inspector (Hover / Klik)</h3>
+                    </div>
+
+                    <div class="probe-canvas-container">
+                        <p class="probe-hint"><i class="fa-solid fa-hand-pointer"></i> <strong>Arahkan mouse atau klik</strong> pada gambar di bawah untuk melihat rincian kalkulasi matematika konvolusi per-pixel!</p>
+                        <div class="canvas-wrap" id="convCanvasWrap">
+                            <img id="convResultImg" src="" alt="Convolution Result">
+                            <div id="probeCrosshair" class="probe-crosshair"></div>
+                        </div>
+                    </div>
+
+                    <!-- Step-by-Step Math Inspector Box -->
+                    <div class="pixel-math-inspector" id="pixelMathInspector">
+                        <div class="inspector-header">
+                            <h4><i class="fa-solid fa-calculator text-yellow"></i> Kalkulasi Pixel pada Koordinat: <span id="probeCoord" class="text-cyan">(x: 150, y: 120)</span></h4>
+                        </div>
+                        
+                        <div class="math-breakdown-grid">
+                            <!-- Sub-grid Image Patch -->
+                            <div class="math-block">
+                                <h5>1. Patch Citra ($f(x,y)$)</h5>
+                                <div class="sub-matrix" id="patchMatrixDisplay">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+                            
+                            <div class="math-operator">
+                                <i class="fa-solid fa-xmark"></i>
+                                <span>Element-wise</span>
+                            </div>
+
+                            <!-- Kernel Grid -->
+                            <div class="math-block">
+                                <h5>2. Kernel Matrix ($K$)</h5>
+                                <div class="sub-matrix" id="kernelMatrixDisplay">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+
+                            <div class="math-operator">
+                                <i class="fa-solid fa-equals"></i>
+                            </div>
+
+                            <!-- Result Products -->
+                            <div class="math-block">
+                                <h5>3. Hasil Kali ($P \odot K$)</h5>
+                                <div class="sub-matrix" id="productMatrixDisplay">
+                                    <!-- Populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Arithmetic Calculation Summary -->
+                        <div class="math-calc-summary">
+                            <div class="calc-step">
+                                <strong>&sum; Produk:</strong> <span id="calcSumProducts" class="calc-number">0</span>
+                            </div>
+                            <div class="calc-step">
+                                <strong>Dibagi Divisor:</strong> <span id="calcDivided" class="calc-number">0</span>
+                            </div>
+                            <div class="calc-step">
+                                <strong>Ditambah Bias (+):</strong> <span id="calcBiased" class="calc-number">0</span>
+                            </div>
+                            <div class="calc-step highlight-step">
+                                <strong>Nilai Akhir (0-255):</strong> <span id="calcFinalPixel" class="calc-number-glow">0</span>
+                                <div class="color-preview-box" id="calcColorBox"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Code Snippet Python -->
+                    <div class="code-export-box">
+                        <div class="code-header">
+                            <span><i class="fa-brands fa-python text-yellow"></i> Python cv2.filter2D Code</span>
+                            <button class="btn-copy" id="btnCopyConvCode"><i class="fa-regular fa-copy"></i> Salin Kode</button>
+                        </div>
+                        <pre><code class="language-python" id="convCodeSnippet"># Code snippet</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 3: EDGE DETECTION STUDIO -->
+        <!-- ========================================================================= -->
+        <section id="tab-edges" class="tab-pane">
+            <div class="pane-header">
+                <div>
+                    <h2><i class="fa-solid fa-vector-square text-emerald"></i> Modul 3: Edge Detection Studio</h2>
+                    <p>Analisis komparatif operator turunan orde pertama (Sobel, Prewitt, Scharr, Roberts) dan orde kedua (Laplacian, LoG).</p>
+                </div>
+                <div class="badge-pill"><i class="fa-solid fa-compass"></i> Gradient Vectors & Magnitude</div>
+            </div>
+
+            <div class="grid-2col">
+                <!-- Edge Controls -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-sliders"></i> Pemilihan Operator Deteksi Tepi</h3>
+                    </div>
+
+                    <!-- Operator Selection Pills -->
+                    <div class="form-group">
+                        <label class="form-label">Pilih Operator Gradien:</label>
+                        <div class="edge-operator-pills" id="edgeOperatorPills">
+                            <button class="pill active" data-op="sobel_mag">Sobel Magnitude (&radic;(G<sub>x</sub><sup>2</sup> + G<sub>y</sub><sup>2</sup>))</button>
+                            <button class="pill" data-op="sobel_x">Sobel Horizontal (G<sub>x</sub> - Tepi Vertikal)</button>
+                            <button class="pill" data-op="sobel_y">Sobel Vertikal (G<sub>y</sub> - Tepi Horizontal)</button>
+                            <button class="pill" data-op="prewitt">Prewitt Magnitude</button>
+                            <button class="pill" data-op="scharr">Scharr Operator (Presisi Tinggi)</button>
+                            <button class="pill" data-op="laplacian">Laplacian (Orde-2 &nabla;<sup>2</sup>f)</button>
+                            <button class="pill" data-op="log">Laplacian of Gaussian (LoG)</button>
+                            <button class="pill" data-op="roberts">Roberts Cross (2×2)</button>
+                        </div>
+                    </div>
+
+                    <!-- Operator Parameters -->
+                    <div class="dynamic-params-box">
+                        <div class="param-row">
+                            <div class="param-label-row">
+                                <label for="edgePreBlur">Pre-Smoothing Gaussian Blur (K × K):</label>
+                                <span class="val-display" id="edgePreBlurVal">3 × 3</span>
+                            </div>
+                            <input type="range" id="edgePreBlur" min="1" max="15" step="2" value="3">
+                            <small class="text-muted">Peredaman derau sebelum diferensiasi gradien.</small>
+                        </div>
+
+                        <div class="param-row">
+                            <div class="param-label-row">
+                                <label for="edgeKsize">Aperture Size / Orde Kernel Sobel/Laplacian:</label>
+                                <span class="val-display" id="edgeKsizeVal">3</span>
+                            </div>
+                            <input type="range" id="edgeKsize" min="1" max="7" step="2" value="3">
+                        </div>
+
+                        <div class="param-row">
+                            <div class="param-label-row">
+                                <label for="edgeScale">Faktor Skala Pengali (Scale Multiplier):</label>
+                                <span class="val-display" id="edgeScaleVal">1.0</span>
+                            </div>
+                            <input type="range" id="edgeScale" min="0.2" max="5.0" step="0.1" value="1.0">
+                        </div>
+
+                        <div class="param-row">
+                            <div class="param-label-row">
+                                <label for="edgeThreshold">Binarisasi Ambang Batas (Thresholding):</label>
+                                <span class="val-display" id="edgeThresholdVal">0 (Off)</span>
+                            </div>
+                            <input type="range" id="edgeThreshold" min="0" max="255" step="1" value="0">
+                        </div>
+                    </div>
+
+                    <!-- Theoretical Comparison Table -->
+                    <div class="edge-theory-table-wrap">
+                        <h4><i class="fa-solid fa-book-open"></i> Karakteristik Matriks Kernel Deteksi Tepi</h4>
+                        <table class="styled-table">
+                            <thead>
+                                <tr>
+                                    <th>Operator</th>
+                                    <th>Orde Turunan</th>
+                                    <th>Keunggulan</th>
+                                    <th>Kelemahan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Sobel</strong></td>
+                                    <td>Orde-1 ($\partial f / \partial x$)</td>
+                                    <td>Memiliki pembobotan Gaussian smoothing bawaan</td>
+                                    <td>Tepi relatif tebal</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Prewitt</strong></td>
+                                    <td>Orde-1</td>
+                                    <td>Sederhana & cepat</td>
+                                    <td>Lebih rentan derau daripada Sobel</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Scharr</strong></td>
+                                    <td>Orde-1</td>
+                                    <td>Akurasi rotasi superior pada kernel 3x3</td>
+                                    <td>Sensitif pada frekuensi sangat tinggi</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Laplacian</strong></td>
+                                    <td>Orde-2 ($\nabla^2 f$)</td>
+                                    <td>Isotropik (semua arah), zero-crossing</td>
+                                    <td>Sangat sensitif terhadap noise</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Edge Visual Display -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-image"></i> Hasil Deteksi Tepi & Visualisasi Orientasi</h3>
+                    </div>
+
+                    <div class="edge-view-grid">
+                        <div class="edge-view-card">
+                            <h5>Peta Magnitudo Gradien Tepi</h5>
+                            <img id="edgeResultImg" src="" alt="Edge Result">
+                            <div class="edge-stat-bar">
+                                <span>Kerapatan Tepi (Edge Density):</span>
+                                <strong id="edgeDensityVal" class="text-emerald">0%</strong>
+                            </div>
+                        </div>
+
+                        <div class="edge-view-card" id="angleMapCard">
+                            <h5>Peta Arah Gradien ($\theta$ - False Color HSV)</h5>
+                            <img id="edgeAngleMapImg" src="" alt="Gradient Angle Map">
+                            <div class="angle-legend">
+                                <span class="angle-chip chip-red">0° / 180° (Horizontal)</span>
+                                <span class="angle-chip chip-green">90° (Vertikal)</span>
+                                <span class="angle-chip chip-blue">45° / 135° (Diagonal)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Code Snippet Python -->
+                    <div class="code-export-box">
+                        <div class="code-header">
+                            <span><i class="fa-brands fa-python text-yellow"></i> Python OpenCV Edge Detection Snippet</span>
+                            <button class="btn-copy" id="btnCopyEdgeCode"><i class="fa-regular fa-copy"></i> Salin Kode</button>
+                        </div>
+                        <pre><code class="language-python" id="edgeCodeSnippet"># Code snippet</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 4: CANNY 5-STAGE PIPELINE EXPLORER -->
+        <!-- ========================================================================= -->
+        <section id="tab-canny" class="tab-pane">
+            <div class="pane-header">
+                <div>
+                    <h2><i class="fa-solid fa-layer-group text-yellow"></i> Modul 4: Canny Edge Detector 5-Stage Deep Dive</h2>
+                    <p>Pelajari 5 tahapan komprehensif algoritma Canny yang dipublikasikan oleh John F. Canny (1986) sebagai detektor tepi optimal.</p>
+                </div>
+                <div class="badge-pill"><i class="fa-solid fa-award"></i> Optimal Edge Detector</div>
+            </div>
+
+            <!-- Canny Threshold Controls -->
+            <div class="card canny-control-bar">
+                <div class="canny-params-row">
+                    <div class="param-box">
+                        <label for="cannyLowThresh">Low Threshold (T<sub>low</sub>): <span id="cannyLowVal" class="text-cyan">50</span></label>
+                        <input type="range" id="cannyLowThresh" min="5" max="250" value="50">
+                    </div>
+                    <div class="param-box">
+                        <label for="cannyHighThresh">High Threshold (T<sub>high</sub>): <span id="cannyHighVal" class="text-emerald">150</span></label>
+                        <input type="range" id="cannyHighThresh" min="10" max="255" value="150">
+                    </div>
+                    <div class="param-box">
+                        <label for="cannyGaussKsize">Gaussian Kernel (K × K): <span id="cannyGaussKsizeVal" class="text-purple">5 × 5</span></label>
+                        <input type="range" id="cannyGaussKsize" min="3" max="15" step="2" value="5">
+                    </div>
+                    <div class="param-box">
+                        <label for="cannyGaussSigma">Gaussian &sigma;: <span id="cannyGaussSigmaVal" class="text-orange">1.4</span></label>
+                        <input type="range" id="cannyGaussSigma" min="0.5" max="5.0" step="0.1" value="1.4">
+                    </div>
+                </div>
+
+                <div class="canny-stats-banner">
+                    <div class="stat-pill"><i class="fa-solid fa-circle text-emerald"></i> Strong Edges: <strong id="statStrongEdges">0 px</strong></div>
+                    <div class="stat-pill"><i class="fa-solid fa-circle text-yellow"></i> Weak Edges: <strong id="statWeakEdges">0 px</strong></div>
+                    <div class="stat-pill"><i class="fa-solid fa-check-double text-cyan"></i> Final Hysteresis Edges: <strong id="statFinalEdges">0 px</strong></div>
+                </div>
+            </div>
+
+            <!-- 5-Stage Visual Workflow Cards -->
+            <div class="canny-stages-flow">
+                <!-- Stage 1 -->
+                <div class="stage-card">
+                    <div class="stage-badge">Tahap 1</div>
+                    <h4>Grayscale Conversion</h4>
+                    <p class="stage-desc">Mengubah citra warna ke ruang monokrom 1 kanal intensitas I(x, y).</p>
+                    <div class="stage-img-wrap">
+                        <img id="cannyStage1" src="" alt="Stage 1">
+                    </div>
+                </div>
+
+                <!-- Stage 2 -->
+                <div class="stage-card">
+                    <div class="stage-badge">Tahap 2</div>
+                    <h4>Gaussian Smoothing</h4>
+                    <p class="stage-desc">Meredam noise dengan filter Gaussian (K × K, &sigma;) agar tidak memicu false-edges.</p>
+                    <div class="stage-img-wrap">
+                        <img id="cannyStage2" src="" alt="Stage 2">
+                    </div>
+                </div>
+
+                <!-- Stage 3 -->
+                <div class="stage-card">
+                    <div class="stage-badge">Tahap 3</div>
+                    <h4>Sobel Gradient</h4>
+                    <p class="stage-desc">Menghitung magnitudo |G| = &radic;(G<sub>x</sub><sup>2</sup> + G<sub>y</sub><sup>2</sup>) dan sudut arah &theta; = arctan(G<sub>y</sub>/G<sub>x</sub>).</p>
+                    <div class="stage-img-wrap">
+                        <img id="cannyStage3" src="" alt="Stage 3">
+                    </div>
+                </div>
+
+                <!-- Stage 4 -->
+                <div class="stage-card highlight-card">
+                    <div class="stage-badge">Tahap 4</div>
+                    <h4>Non-Maximum Suppression</h4>
+                    <p class="stage-desc">Menipiskan kontur tepi hingga setebal 1 pixel dengan mempertahankan puncak lokal gradien.</p>
+                    <div class="stage-img-wrap">
+                        <img id="cannyStage4" src="" alt="Stage 4">
+                    </div>
+                </div>
+
+                <!-- Stage 5 -->
+                <div class="stage-card highlight-card-gold">
+                    <div class="stage-badge">Tahap 5</div>
+                    <h4>Dual Threshold & Hysteresis</h4>
+                    <p class="stage-desc">Memisahkan Strong Edge (<span class="text-emerald">Hijau</span>) & Weak Edge (<span class="text-yellow">Kuning</span>), lalu menghubungkan kontur yang bersambung.</p>
+                    <div class="stage-img-wrap">
+                        <img id="cannyStage5" src="" alt="Stage 5 Final">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Code Snippet Python -->
+            <div class="card mt-20">
+                <div class="code-export-box">
+                    <div class="code-header">
+                        <span><i class="fa-brands fa-python text-yellow"></i> Python Canny Pipeline Implementation</span>
+                        <button class="btn-copy" id="btnCopyCannyCode"><i class="fa-regular fa-copy"></i> Salin Kode</button>
+                    </div>
+                    <pre><code class="language-python" id="cannyCodeSnippet"># Code snippet</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 5: COMPUTER VISION REAL-WORLD CASE STUDIES -->
+        <!-- ========================================================================= -->
+        <section id="tab-casestudies" class="tab-pane">
+            <div class="pane-header">
+                <div>
+                    <h2><i class="fa-solid fa-car text-cyan"></i> Modul 5: Contoh Penggunaan dalam Computer Vision</h2>
+                    <p>Implementasi nyata teknik filtering, konvolusi, dan deteksi tepi dalam sistem industri & kecerdasan buatan modern.</p>
+                </div>
+                <div class="badge-pill"><i class="fa-solid fa-brain"></i> Real-World Computer Vision Pipelines</div>
+            </div>
+
+            <!-- Case Study Selector Tabs -->
+            <div class="case-study-nav">
+                <button class="case-tab-btn active" data-case="lane_detection">
+                    <i class="fa-solid fa-road"></i> 1. Lane Detection (Self-Driving)
+                </button>
+                <button class="case-tab-btn" data-case="document_scanner">
+                    <i class="fa-solid fa-file-invoice"></i> 2. Document Scanner & Rectify
+                </button>
+                <button class="case-tab-btn" data-case="license_plate">
+                    <i class="fa-solid fa-car-rear"></i> 3. License Plate Localization
+                </button>
+                <button class="case-tab-btn" data-case="xray_enhancement">
+                    <i class="fa-solid fa-x-ray"></i> 4. Medical X-Ray Enhancement
+                </button>
+            </div>
+
+            <div class="card mt-20">
+                <div class="case-study-header">
+                    <div>
+                        <h3 id="caseTitle">Studi Kasus: Loading...</h3>
+                        <p id="caseDescription" class="text-muted">Deskripsi pipeline studi kasus...</p>
+                    </div>
+                </div>
+
+                <!-- Pipeline Steps Grid -->
+                <div class="case-steps-flow" id="caseStepsFlow">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 6: LIVE WEBCAM REAL-TIME PROCESSING -->
+        <!-- ========================================================================= -->
+        <section id="tab-livecam" class="tab-pane">
+            <div class="pane-header">
+                <div>
+                    <h2><i class="fa-solid fa-video text-rose"></i> Modul 6: Real-time Live Camera Processing Studio</h2>
+                    <p>Uji coba filter konvolusi dan deteksi tepi secara real-time langsung melalui WebCam komputer Anda.</p>
+                </div>
+                <div class="badge-pill"><i class="fa-solid fa-bolt"></i> GPU/Canvas Real-time Stream</div>
+            </div>
+
+            <div class="grid-2col">
+                <!-- Camera Video & Canvas -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-camera"></i> Live Video Feed</h3>
+                        <div class="cam-toggle-actions">
+                            <button class="btn-primary" id="btnStartCam"><i class="fa-solid fa-power-off"></i> Hidupkan Kamera</button>
+                            <button class="btn-secondary" id="btnCaptureCam" disabled><i class="fa-solid fa-camera-retro"></i> Ambil Foto & Analisis</button>
+                        </div>
+                    </div>
+
+                    <div class="cam-viewport">
+                        <video id="webcamVideo" autoplay playsinline muted style="display: none;"></video>
+                        <canvas id="webcamCanvas" width="640" height="480"></canvas>
+                        <div id="camPlaceholder" class="cam-placeholder">
+                            <i class="fa-solid fa-video-slash"></i>
+                            <p>Kamera belum aktif. Klik tombol "Hidupkan Kamera" di atas untuk memulai streaming real-time.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Stream Filter Controls -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-wand-magic-sparkles"></i> Filter Realtime Kamera</h3>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Pilih Mode Filter Realtime:</label>
+                        <div class="cam-filter-grid" id="camFilterGrid">
+                            <button class="cam-pill active" data-camfilter="passthrough">
+                                <i class="fa-solid fa-video"></i> Normal Video
+                            </button>
+                            <button class="cam-pill" data-camfilter="sobel_edges">
+                                <i class="fa-solid fa-vector-square"></i> Sobel Edges (Glow)
+                            </button>
+                            <button class="cam-pill" data-camfilter="canny_live">
+                                <i class="fa-solid fa-chart-line"></i> Canny Edges
+                            </button>
+                            <button class="cam-pill" data-camfilter="pencil_sketch">
+                                <i class="fa-solid fa-pencil"></i> Inverted Pencil Sketch
+                            </button>
+                            <button class="cam-pill" data-camfilter="gaussian_blur">
+                                <i class="fa-solid fa-water"></i> Gaussian Blur
+                            </button>
+                            <button class="cam-pill" data-camfilter="sharpen_live">
+                                <i class="fa-solid fa-bolt"></i> Realtime Sharpening
+                            </button>
+                            <button class="cam-pill" data-camfilter="emboss_live">
+                                <i class="fa-solid fa-mountain"></i> 3D Emboss Relief
+                            </button>
+                            <button class="cam-pill" data-camfilter="cartoon">
+                                <i class="fa-solid fa-palette"></i> Cartoonifier Effect
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="cam-fps-box">
+                        <div class="fps-meter">
+                            <span>Frame Rate Real-time:</span>
+                            <strong id="liveCamFps" class="text-cyan">0 FPS</strong>
+                        </div>
+                        <div class="fps-meter">
+                            <span>Resolusi Stream:</span>
+                            <strong id="liveCamRes">640 × 480 px</strong>
+                        </div>
+                    </div>
+
+                    <div class="theory-note-card">
+                        <h5><i class="fa-solid fa-circle-info text-cyan"></i> Catatan Pemrosesan Real-time</h5>
+                        <p>Pemrosesan streaming kamera dieksekusi secara instan pada browser menggunakan HTML5 Canvas pixel manipulation engine (ImageData TypedArrays) untuk latensi rendah 30-60 FPS.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================================================= -->
+        <!-- TAB 7: KUIS PEMAHAMAN & TEORI PRAKTIKUM -->
+        <!-- ========================================================================= -->
+        <section id="tab-quiz" class="tab-pane">
+            <div class="pane-header">
+                <div>
+                    <h2><i class="fa-solid fa-graduation-cap text-yellow"></i> Modul 7: Evaluasi Pemahaman & Rangkuman Teori</h2>
+                    <p>Uji kompetensi mahasiswa mengenai konsep filtering spasial, operasi konvolusi 2D, derivatif gradien tepi, dan algoritma Canny.</p>
+                </div>
+                <div class="badge-pill"><i class="fa-solid fa-clipboard-check"></i> Evaluasi Kompetensi Akhir</div>
+            </div>
+
+            <div class="grid-2col">
+                <!-- Quiz Interactive Container -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-circle-question"></i> Kuis Interaktif Mahasiswa (10 Soal)</h3>
+                        <div class="quiz-score-badge" id="quizScoreBadge">Skor: 0 / 10</div>
+                    </div>
+
+                    <div id="quizQuestionsContainer" class="quiz-questions-flow">
+                        <!-- Loaded dynamically -->
+                    </div>
+
+                    <div class="quiz-actions-bar">
+                        <button class="btn-primary" id="btnSubmitQuiz">
+                            <i class="fa-solid fa-check-circle"></i> Kumpulkan & Periksa Jawaban
+                        </button>
+                        <button class="btn-secondary" id="btnResetQuiz">
+                            <i class="fa-solid fa-rotate-left"></i> Ulangi Kuis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Theory Cheat-Sheet & Formula Reference -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fa-solid fa-book-bookmark"></i> Rangkuman Teori & Formula Praktikum</h3>
+                    </div>
+
+                    <div class="theory-scroll-content">
+                        <!-- Chapter 1 -->
+                        <div class="theory-chapter">
+                            <h4>1. Konvolusi 2D pada Citra Digital</h4>
+                            <p>Konvolusi adalah operasi matematis perkalian bergeser (*sliding window*) antara matriks citra $f(x,y)$ dan matriks bobot kernel $K(i,j)$:</p>
+                            <div class="formula-block">
+                                $$g(x,y) = \sum_{i=-a}^{a} \sum_{j=-b}^{b} f(x-i, y-j) K(i,j)$$
+                            </div>
+                            <ul>
+                                <li><strong>Kernel Identity:</strong> Tidak mengubah gambar ($\text{Center}=1$, lainnya $0$).</li>
+                                <li><strong>Divisor / Normalisasi:</strong> Membagi hasil konvolusi dengan jumlah seluruh elemen kernel agar energi intensitas total tetap terjaga.</li>
+                            </ul>
+                        </div>
+
+                        <!-- Chapter 2 -->
+                        <div class="theory-chapter">
+                            <h4>2. Filter Linear vs Non-Linear</h4>
+                            <ul>
+                                <li><strong>Mean / Box Filter (Linear):</strong> Rata-rata aritmatika pixel tetangga. Sederhana tetapi menghasilkan keburaman tepi tajam.</li>
+                                <li><strong>Gaussian Blur (Linear):</strong> Bobot berdistribusi normal $G(x,y) = \frac{1}{2\pi\sigma^2} e^{-\frac{x^2+y^2}{2\sigma^2}}$. Sangat optimal untuk meredam Gaussian noise.</li>
+                                <li><strong>Median Filter (Non-Linear):</strong> Mengurutkan pixel tetangga dan memilih nilai median. Sangat ampuh menghapus bintik <em>Salt & Pepper</em> tanpa merusak ketajaman garis.</li>
+                                <li><strong>Bilateral Filter (Non-Linear):</strong> Memadukan kedekatan jarak ruang spasial dan kemiripan intensitas radiometrik (<em>Edge-preserving smoothing</em>).</li>
+                            </ul>
+                        </div>
+
+                        <!-- Chapter 3 -->
+                        <div class="theory-chapter">
+                            <h4>3. Operator Deteksi Tepi (Edge Operators)</h4>
+                            <p>Tepi adalah diskontinuitas atau perubahan intensitas yang curam dalam citra. Dideteksi dengan turunan numerik:</p>
+                            <div class="formula-block">
+                                $$\nabla f = \begin{bmatrix} G_x \\ G_y \end{bmatrix} = \begin{bmatrix} \frac{\partial f}{\partial x} \\ \frac{\partial f}{\partial y} \end{bmatrix}$$
+                                $$|G| = \sqrt{G_x^2 + G_y^2}, \quad \theta = \arctan\left(\frac{G_y}{G_x}\right)$$
+                            </div>
+                            <p><strong>Operator Sobel $3 \times 3$:</strong></p>
+                            <div class="formula-block">
+                                $$S_x = \begin{bmatrix} -1 & 0 & 1 \\ -2 & 0 & 2 \\ -1 & 0 & 1 \end{bmatrix}, \quad S_y = \begin{bmatrix} -1 & -2 & -1 \\ 0 & 0 & 0 \\ 1 & 2 & 1 \end{bmatrix}$$
+                            </div>
+                        </div>
+
+                        <!-- Chapter 4 -->
+                        <div class="theory-chapter">
+                            <h4>4. Algoritma Canny Edge Detector</h4>
+                            <ol>
+                                <li><strong>Gaussian Smoothing:</strong> Filter noise dengan kernel Gaussian.</li>
+                                <li><strong>Gradient Calculation:</strong> Hitung $G_x, G_y$, Magnitudo $|G|$, dan Arah $\theta$.</li>
+                                <li><strong>Non-Maximum Suppression (NMS):</strong> Supresi pixel gradien yang bukan merupakan puncak lokal sepanjang arah $\theta$.</li>
+                                <li><strong>Hysteresis Thresholding:</strong> Klasifikasi pixel dengan ambang batas ganda $T_{low}$ dan $T_{high}$.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>VisionLab AI &copy; 2026 | Laboratorium Komputer Visi & NLP | Praktikum 04: Filtering, Konvolusi, Deteksi Tepi</p>
+    </footer>
+
+    <!-- Client JavaScript Modules -->
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/convolution.js"></script>
+    <script src="/static/js/canny_pipeline.js"></script>
+    <script src="/static/js/live_camera.js"></script>
+    <script src="/static/js/quiz.js"></script>
+</body>
+</html>
