@@ -966,6 +966,108 @@ def get_quiz():
     ]
     return jsonify(questions)
 
+# ----------------- 7. CODE TEMPLATE PREVIEWS API -----------------
+@app.route('/api/code_template_preview', methods=['POST'])
+def code_template_preview():
+    data = request.json or {}
+    img = load_input_image(data)
+    method = data.get('method', 'gaussian')
+    
+    panels = []
+    
+    if method == 'gaussian':
+        b5 = cv2.GaussianBlur(img, (5, 5), sigmaX=1.0)
+        b15 = cv2.GaussianBlur(img, (15, 15), sigmaX=3.0)
+        panels = [
+            {"title": "1. Gambar Asli", "image": img_to_base64(img)},
+            {"title": "2. Gaussian Blur (5x5, σ=1.0)", "image": img_to_base64(b5)},
+            {"title": "3. Gaussian Blur (15x15, σ=3.0)", "image": img_to_base64(b15)}
+        ]
+    elif method == 'mean':
+        m5 = cv2.blur(img, (5, 5))
+        m15 = cv2.blur(img, (15, 15))
+        panels = [
+            {"title": "1. Gambar Asli", "image": img_to_base64(img)},
+            {"title": "2. Mean Blur (5x5)", "image": img_to_base64(m5)},
+            {"title": "3. Mean Blur (15x15)", "image": img_to_base64(m15)}
+        ]
+    elif method == 'median':
+        noisy = add_noise(img, 'salt_pepper', 0.08)
+        med3 = cv2.medianBlur(noisy, 3)
+        med7 = cv2.medianBlur(noisy, 7)
+        panels = [
+            {"title": "1. Gambar Berderau (Salt & Pepper)", "image": img_to_base64(noisy)},
+            {"title": "2. Median Filter (k=3)", "image": img_to_base64(med3)},
+            {"title": "3. Median Filter (k=7)", "image": img_to_base64(med7)}
+        ]
+    elif method == 'bilateral':
+        bil1 = cv2.bilateralFilter(img, d=9, sigmaColor=75, sigmaSpace=75)
+        bil2 = cv2.bilateralFilter(img, d=15, sigmaColor=150, sigmaSpace=150)
+        panels = [
+            {"title": "1. Gambar Asli", "image": img_to_base64(img)},
+            {"title": "2. Bilateral (d=9, σc=75, σs=75)", "image": img_to_base64(bil1)},
+            {"title": "3. Bilateral (d=15, σc=150, σs=150)", "image": img_to_base64(bil2)}
+        ]
+    elif method == 'convolution':
+        k_sharp = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], dtype=np.float32)
+        k_emb = np.array([[-2, -1, 0], [-1, 1, 1], [0, 1, 2]], dtype=np.float32)
+        sharp = cv2.filter2D(img, -1, k_sharp)
+        emb = np.clip(cv2.filter2D(img, -1, k_emb) + 128, 0, 255).astype(np.uint8)
+        panels = [
+            {"title": "1. Gambar Asli", "image": img_to_base64(img)},
+            {"title": "2. Hasil Sharpening", "image": img_to_base64(sharp)},
+            {"title": "3. Hasil 3D Emboss", "image": img_to_base64(emb)}
+        ]
+    elif method == 'sobel':
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        gx = cv2.convertScaleAbs(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3))
+        gy = cv2.convertScaleAbs(cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3))
+        mag = cv2.convertScaleAbs(np.sqrt(cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)**2 + cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)**2))
+        panels = [
+            {"title": "1. Sobel Gx (Tepi Vertikal)", "image": img_to_base64(gx)},
+            {"title": "2. Sobel Gy (Tepi Horizontal)", "image": img_to_base64(gy)},
+            {"title": "3. Sobel Magnitude Total", "image": img_to_base64(mag)}
+        ]
+    elif method == 'laplacian':
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        lap = cv2.convertScaleAbs(cv2.Laplacian(gray, cv2.CV_64F, ksize=3))
+        log_b = cv2.GaussianBlur(gray, (5, 5), 1.4)
+        log_res = cv2.convertScaleAbs(cv2.Laplacian(log_b, cv2.CV_64F, ksize=3))
+        panels = [
+            {"title": "1. Grayscale Asli", "image": img_to_base64(gray)},
+            {"title": "2. Laplacian Standar", "image": img_to_base64(lap)},
+            {"title": "3. Laplacian of Gaussian (LoG)", "image": img_to_base64(log_res)}
+        ]
+    elif method == 'canny':
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        c1 = cv2.Canny(gray, 50, 150)
+        c2 = cv2.Canny(gray, 120, 220)
+        panels = [
+            {"title": "1. Gambar Asli", "image": img_to_base64(img)},
+            {"title": "2. Canny (50, 150)", "image": img_to_base64(c1)},
+            {"title": "3. Canny (120, 220)", "image": img_to_base64(c2)}
+        ]
+    elif method == 'unsharp':
+        blurred = cv2.GaussianBlur(img, (9, 9), 2.0)
+        sharp = cv2.addWeighted(img, 1.5, blurred, -0.5, 0)
+        panels = [
+            {"title": "1. Gambar Asli", "image": img_to_base64(img)},
+            {"title": "2. Komponen Blur Gaussian", "image": img_to_base64(blurred)},
+            {"title": "3. Hasil Penajaman Unsharp Mask", "image": img_to_base64(sharp)}
+        ]
+    elif method == 'padding':
+        top, bottom, left, right = 40, 40, 40, 40
+        pad_const = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[37, 99, 235])
+        pad_rep = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_REPLICATE)
+        pad_ref = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_REFLECT)
+        panels = [
+            {"title": "1. Constant Border (Blue 40px)", "image": img_to_base64(pad_const)},
+            {"title": "2. Replicate Padding (Duplikasi Tepi)", "image": img_to_base64(pad_rep)},
+            {"title": "3. Reflect Padding (Cermin Tepi)", "image": img_to_base64(pad_ref)}
+        ]
+        
+    return jsonify({"method": method, "panels": panels})
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5004))
     print(f"Starting VisionLab AI on http://127.0.0.1:{port}")

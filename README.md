@@ -36,11 +36,29 @@ pip install -r requirements.txt
 python3 generate_samples.py
 ```
 
-### 3. Menjalankan Server Flask
+### 2. Menjalankan Aplikasi Streamlit (Pilih salah satu perintah)
+
+**Opsi A (Rekomendasi Utama):**
+```bash
+python3 -m streamlit run streamlit_app.py
+```
+
+**Opsi B (Menggunakan Python Launcher):**
+```bash
+python3 run.py
+```
+
+**Opsi C (Menggunakan Shell Script):**
+```bash
+./run_streamlit.sh
+```
+Akses aplikasi melalui browser di: **`http://localhost:8501`**.
+
+### 3. Menjalankan Server Flask Alternatif
 ```bash
 python3 app.py
 ```
-Akses aplikasi melalui browser di: **`http://localhost:5004`** atau **`http://127.0.0.1:5004`**.
+Akses di: **`http://localhost:5004`**.
 
 ---
 
