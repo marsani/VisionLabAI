@@ -551,13 +551,15 @@ with tabs[4]:
         roi_pts = np.array([[(0, h), (w * 0.42, h * 0.42), (w * 0.58, h * 0.42), (w, h)]], dtype=np.int32)
         cv2.fillPoly(mask, roi_pts, 255)
         masked_canny = cv2.bitwise_and(canny, mask)
-   
+        
         lines = cv2.HoughLinesP(masked_canny, 1, np.pi/180, threshold=40, minLineLength=30, maxLineGap=100)
         overlay = lane_img.copy()
         if lines is not None:
             for line in lines:
-                x1, y1, x2, y2 = line[0]
-                cv2.line(overlay, (x1, y1), (x2, y2), (255, 0, 0), 4, cv2.LINE_AA)
+                coords = line.ravel()
+                if len(coords) >= 4:
+                    x1, y1, x2, y2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
+                    cv2.line(overlay, (x1, y1), (x2, y2), (255, 0, 0), 4, cv2.LINE_AA)
                 
         st.subheader("🚗 Pipeline Deteksi Marka Jalan")
         k1, k2, k3, k4 = st.columns(4)
