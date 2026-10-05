@@ -551,7 +551,7 @@ with tabs[4]:
         roi_pts = np.array([[(0, h), (w * 0.42, h * 0.42), (w * 0.58, h * 0.42), (w, h)]], dtype=np.int32)
         cv2.fillPoly(mask, roi_pts, 255)
         masked_canny = cv2.bitwise_and(canny, mask)
-        
+   
         lines = cv2.HoughLinesP(masked_canny, 1, np.pi/180, threshold=40, minLineLength=30, maxLineGap=100)
         overlay = lane_img.copy()
         if lines is not None:
